@@ -10,6 +10,15 @@
                 
               >
                 <a-form-item
+                  :label="'hahahah'"
+                >
+                <a-input
+                    v-model:value="input_text"
+                    placeholder="please input text"
+                    style="width: 40%; margin-right: 8px;height: 100px;"
+                  />
+                </a-form-item>
+                <a-form-item
                   v-for="(model_name, index) in model_names"
                   :key="model_name.key"
                   v-bind="index === 0 ? formItemLayout : {}"
@@ -21,7 +30,7 @@
                     placeholder="please input the name of model"
                     style="width: 40%; margin-right: 8px"
                   />
-                  <a-cascader class="choose_model" v-model:value="loacal_models[index]" :options="options1" placeholder="Please choose model" />
+                  <a-cascader class="choose_model" v-model:value="local_models[index]" :options="options1" placeholder="Please choose model" />
                   
                   <MinusCircleOutlined
                     v-if="model_names.length > 1"
@@ -42,32 +51,34 @@
                 </a-form-item> -->
             </a-form>
          </a-modal> 
+
+      <a-modal v-model:visible="res_visible" width="60%" title="Basic Modal" @ok="handleOk">
+          <div v-if="res_spin_visible" class="res_spin">
+              <a-spin  size="large"/>
+          </div>
+          {{result}}
+      </a-modal>
+
     <!-- 主界面 -->
     <div class="components-page-header-demo-responsive" style="border: 1px solid rgb(235, 237, 240)">
         <a-page-header :title=repo_name sub-title="This is a subtitle" @back="() => $router.go(-1)">
         <template #extra>
-            <a-button key="3">Operation</a-button>
-            <a-button key="2">Branches</a-button>
+            <a-button key="2">Operation</a-button>
             <a-button type="primary" @click="showModal">Choose Models</a-button>
         </template>
         <template #footer>
             <a-tabs>
             <a-tab-pane key="1" tab="Details" />
-            <a-tab-pane key="2" tab="Rule" />
             </a-tabs>
         </template>
         <div class="content">
             <div class="main">
-            <a-descriptions size="small" :column="2">
+            <a-descriptions size="small" :column="1">
                 <a-descriptions-item label="Owner">{{owner_name}}</a-descriptions-item>
-                <a-descriptions-item label="Association">
-                <a>421421</a>
+                <a-descriptions-item label="Description">
+                <a>待添加</a>
                 </a-descriptions-item>
                 <a-descriptions-item label="Update Time">{{time}}</a-descriptions-item>
-                <a-descriptions-item label="Effective Time">2017-10-10</a-descriptions-item>
-                <a-descriptions-item label="Remarks">
-                Gonghu Road, Xihu District, Hangzhou, Zhejiang, China
-                </a-descriptions-item>
             </a-descriptions>
             </div>
             <div class="extra">
@@ -124,8 +135,8 @@ import {DownOutlined , BranchesOutlined ,MinusCircleOutlined, PlusOutlined } fro
 import { defineComponent, onMounted, ref, nextTick,reactive } from 'vue';
 import {useRouter} from 'vue-router'
 import axios  from "axios"
-const host = 'http://localhost:8083/'
-// const host = 'http://39.105.6.98:43081/'
+// const host = 'http://localhost:8084/'
+const host = 'http://39.105.6.98:43081/'
 
 
 
@@ -152,6 +163,10 @@ export default defineComponent({
     const time = ref('')
     const temp_version = ref('')
     const is_extention = ref(false)
+    const res_visible = ref(false)
+    const res_spin = ref(false)
+    const result = ref('')
+    const input_text = ref('')
 
     const visible = ref(false);
 
@@ -159,9 +174,13 @@ export default defineComponent({
       visible.value = true;
     };
 
+    const showResModal = () =>{
+      res_visible.value = true;
+    };
+
     const handleOk = e => {
       console.log(e);
-      visible.value = false;
+      res_visible.value = false;
     };
 
 
@@ -198,14 +217,18 @@ export default defineComponent({
     };
     // const dynamicValidateForm = ref({
     //   model_names: [],
-    //   loacal_models:[]
+    //   local_models:[]
     // })
 
     const model_names = ref([])
-    const loacal_models = ref([])
+    const local_models = ref([])
+    const res_spin_visible = ref(true)
 
     const submitForm = () => {
-      let url = host+'test'
+      visible.value=false
+      showResModal()
+      res_spin_visible.value = true
+      let url = host+'run_mlflow_project'
       // formRef.value.validate().then(() => {
       //   console.log('values', value);
       // }).catch(error => {
@@ -213,8 +236,8 @@ export default defineComponent({
       // });
       // console.log(value)
       console.log(model_names)
-      console.log(loacal_models)
-      runMlflowProject()
+      console.log(local_models)
+      // runMlflowProject()
       let temp =[]
       for(let i = 0 ; i<model_names.value.length;i++){
           temp.push(model_names.value[i].value)
@@ -224,10 +247,14 @@ export default defineComponent({
           repo_name:repo_name.value,
           temp_version:temp_version.value,
           model_names:temp,
-          loacal_models:loacal_models.value
+          s3_models:local_models.value,
+          input_text:input_text.value
         })
         .then(response=>{
+            res_spin_visible.value = false
             //console.log('fileTreeData',response.data.data)
+            result.value = response.data.data
+
 
         })
         .catch(error=>{
@@ -245,7 +272,7 @@ export default defineComponent({
 
       if (index !== -1) {
         model_names.value.splice(index, 1);
-        loacal_models.value.splice(index,1);
+        local_models.value.splice(index,1);
       }
     };
 
@@ -319,17 +346,11 @@ export default defineComponent({
       axios.get(url)
         .then(response=>{
             let model_data = []
-            //console.log('fileTreeData',response.data.data)
             let models = response.data.data
                 for(var key in models){
                     console.log('key',key)
                     console.log('models[key]',models[key])
                     let children = []
-                    // for(let version in models[key]){
-                    //   console.log('typeof(version)',typeof(version))
-                    //   console.log('version',version)
-                    //   children.push({'value':version['model_version'],'label':version['model_version']})
-                    // }
                     for(var i=0 ; i<models[key].length;i++){
                       let version = models[key][i]
                       console.log('-----version------',version)
@@ -352,8 +373,6 @@ export default defineComponent({
        is_extention.value = false
        let url = host+'query_file_by_owner_and_name_and_branch'
        console.log('getFileByHeadBranch temp_version',temp_version.value)
-       //console.log(url)
-      //  if(branch_name==null){
         axios.post(url,{
           owner_name:owner_name,
           repo_name:repo_name,
@@ -370,6 +389,7 @@ export default defineComponent({
     }
 
     let runMlflowProject = function(){
+        res_spin_visible.value = true
         let url = host+'run_mlflow_project'
         axios.post(url,{
           owner_name:owner_name.value,
@@ -377,6 +397,7 @@ export default defineComponent({
           temp_version:temp_version.value
         })
         .then(response=>{
+          res_spin_visible.value = false
         })
         .catch(error=>{
             //console.error();
@@ -409,10 +430,16 @@ export default defineComponent({
         value: ref([]),
         options1,
         model_names,
-        loacal_models,
+        local_models,
         getAllModels,
         is_extention,
-        runMlflowProject
+        runMlflowProject,
+        showResModal,
+        res_spin,
+        result,
+        res_visible,
+        input_text,
+        res_spin_visible
     };
   },
 // 
@@ -422,6 +449,16 @@ export default defineComponent({
 .demo-loadmore-list {
   min-height: 350px;
 }
+
+.res_spin {
+  text-align: center;
+  /* background: rgba(0, 0, 0, 0.05); */
+  border-radius: 4px;
+  margin-bottom: 20px;
+  padding: 30px 50px;
+  margin: 20px 0;
+}
+
 </style>
 <style>
 .components-page-header-demo-responsive {

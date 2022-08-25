@@ -1,10 +1,7 @@
 <template>
   <div>
     <div class="topbar">
-      <div>
-         <!-- <img alt="example" src="https://os.alipayobjects.com/rmsportal/QBnOOoLaAfKPirc.png" /> -->
-      </div>
-      <div style="width=80%">
+      <div class="menu">
         <a-menu class="top_menu" v-model:selectedKeys="current" mode="horizontal">
           <a-menu-item key="code">
             <template #icon>
@@ -17,6 +14,12 @@
               <FolderOpenOutlined />
             </template>
             Models
+          </a-menu-item>
+          <a-menu-item key="projects">
+            <template #icon>
+              <FolderOpenOutlined />
+            </template>
+            projects
           </a-menu-item>
         </a-menu>
       </div>
@@ -40,6 +43,9 @@
         </div>
       </div>
       <div class="content" v-if="current[0]=='code'">
+        <a-button @click="create_repo()">
+          新建仓库
+        </a-button>
         <a-list
           class="demo-loadmore-list"
           :loading="initLoading"
@@ -71,7 +77,19 @@
         </a-list>
       </div>
       <div class="content" v-if="current[0]=='models'">
-          <a-list
+           <a-upload
+              action="/test"
+              :multiple="true"
+              :file-list="fileList"
+              @change="handleChange"
+              directory
+            >
+              <a-button>
+                <upload-outlined></upload-outlined>
+                上传模型
+              </a-button>
+           </a-upload>
+          <!-- <a-list
           class="demo-loadmore-list"
           :loading="initLoading1"
           item-layout="horizontal"
@@ -99,9 +117,101 @@
               </a-skeleton>
             </a-list-item>
           </template>
-        </a-list>
+        </a-list> -->
+
+
+            <a-table :columns="columns" :data-source="model_list">
+              <template #headerCell="{ column }">
+                <template v-if="column.dataIndex === 'name'">
+                  <span>
+                    <smile-outlined />
+                    Name
+                  </span>
+                </template>
+              </template>
+
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.dataIndex === 'name'">
+                    {{ record.model_name }}
+                </template>
+                 <template v-if="column.dataIndex === 'version'">
+                    {{ record.model_version }}
+                </template>
+                 <template v-if="column.dataIndex === 'create_time'">
+                    {{ record.model_name }}
+                </template>
+                 <template v-if="column.dataIndex === 'operation'">
+                     <a-popconfirm
+                        v-if="model_list.length"
+                        title="Sure to delete?"
+                        @confirm="onDelete(record.model_name,record.model_version)"
+                      >
+                        <a>Delete</a>
+                      </a-popconfirm>
+                </template>
+                <!-- <template v-else-if="column.key === 'tags'">
+                  <span>
+                    <a-tag
+                      v-for="tag in record.tags"
+                      :key="tag"
+                      :color="tag === 'loser' ? 'volcano' : tag.length > 5 ? 'geekblue' : 'green'"
+                    >
+                      {{ tag.toUpperCase() }}
+                    </a-tag>
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <span>
+                    <a>Invite 一 {{ record.name }}</a>
+                    <a-divider type="vertical" />
+                    <a>Delete</a>
+                    <a-divider type="vertical" />
+                    <a class="ant-dropdown-link">
+                      More actions
+                      <down-outlined />
+                    </a>
+                  </span>
+                </template> -->
+              </template>
+            </a-table>
 
       </div>
+      <div class="content" v-if="current[0]=='projects'">
+            <a-table :columns="columns" :data-source="model_list">
+              <template #headerCell="{ column }">
+                <template v-if="column.dataIndex === 'name'">
+                  <span>
+                    <smile-outlined />
+                    Name
+                  </span>
+                </template>
+              </template>
+
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.dataIndex === 'name'">
+                    {{ record.model_name }}
+                </template>
+                 <template v-if="column.dataIndex === 'version'">
+                    {{ record.model_version }}
+                </template>
+                 <template v-if="column.dataIndex === 'create_time'">
+                    {{ record.model_name }}
+                </template>
+                 <template v-if="column.dataIndex === 'operation'">
+                     <a-popconfirm
+                        v-if="model_list.length"
+                        title="Sure to delete?"
+                        @confirm="onDelete(record.model_name,record.model_version)"
+                      >
+                        <a>Delete</a>
+                      </a-popconfirm>
+                </template>
+       
+              </template>
+            </a-table>
+
+      </div>
+
     </div>
   </div>
 </template>
@@ -109,12 +219,12 @@
 
 <script>
 import { defineComponent, reactive, toRefs,ref } from "vue";
-import {onMounted, nextTick } from 'vue';
+import {onMounted } from 'vue';
 import axios  from "axios";
 import { useRouter } from "vue-router"
-import {CodeOutlined, FolderOpenOutlined} from '@ant-design/icons-vue';
-const host = 'http://localhost:8083/'
-// const host = 'http://39.105.6.98:43081/'
+import {CodeOutlined, FolderOpenOutlined ,UploadOutlined } from '@ant-design/icons-vue';
+// const host = 'http://localhost:8084/'
+const host = 'http://39.105.6.98:43081/'
 const query_all_task_url = host+'query_all_task'
 const temp = 'all'
 export default defineComponent({
@@ -122,7 +232,8 @@ export default defineComponent({
     // BankOutlined,
     // ApartmentOutlined
     CodeOutlined,
-    FolderOpenOutlined
+    FolderOpenOutlined,
+    UploadOutlined
     
   },
   setup() {
@@ -137,6 +248,76 @@ export default defineComponent({
     const tasks = ref([])
     const selected = ref(null)
     const model_list = ref([])
+    const fileList = ref([])
+    const columns = [{
+      title: 'name',
+      dataIndex: 'name',
+      width: '30%',
+    }, {
+      title: 'version',
+      dataIndex: 'version',
+    }, {
+      title: 'create_time',
+      dataIndex: 'create_time',
+    }, {
+      title: 'operation',
+      dataIndex: 'operation',
+    }];
+
+    const handleChange = info => {
+      let resFileList = [...info.fileList]; // 1. Limit the number of uploaded files
+      //    Only to show two recent uploaded files, and old ones will be replaced by the new
+
+      resFileList = resFileList.slice(-2); // 2. read from response and show file link
+
+      resFileList = resFileList.map(file => {
+        if (file.response) {
+          // Component will show file.url as link
+          file.url = file.response.url;
+        }
+
+        return file;
+      });
+      fileList.value = resFileList;
+    };
+
+    //  const onDelete = key => {
+    //   dataSource.value = dataSource.value.filter(item => item.key !== key);
+    // };
+    const onDelete = function(model_name,model_version){
+      model_list.value = model_list.value.filter(item => !(item.model_name==model_name&&model_version==item.model_version))
+    }
+
+    const create_repo = function(){
+      let url =  '/api/v1/user/repos'
+        axios.post('/api/v1/user/repos',{
+          auto_init: true,
+          default_branch: "master", 
+          description: "nothing",  
+          name: "test_creation4",  
+          trust_model: "default"
+        },{
+          headers: {
+            Authorization: "token 1b6ef1abf0564839abe7c484489be8b98965a481",
+            accept: 'application/json',
+          }
+        })
+        .then(response=>{
+          console.log(response.data)
+        })
+        .catch(error=>{
+            console.error();
+        })
+
+        // axios.get('http://39.105.6.98:43000/api/v1/repos/search?access_token=1b6ef1abf0564839abe7c484489be8b98965a481')
+        // .then(response=>{
+        //   console.log(response.data)
+        // })
+        // .catch(error=>{
+        //   console.error(error);
+        // })
+    }
+
     let query_repo_by_task_id = function(taskid){
         let url =  host+'query_repo_by_task_id'
         console.log("update",taskid)
@@ -221,6 +402,7 @@ export default defineComponent({
     });
   
     return {
+      // 参数
         loading,
         initLoading,
         initLoading1,
@@ -228,11 +410,17 @@ export default defineComponent({
         list,
         tasks,
         selected,
+        current,
+        model_list,
+        columns,
+        fileList,
+      // 方法
         query_repo_by_task_id,
         turn_to_repo_detial,
-        current,
         query_all_model,
-        model_list
+        onDelete,
+        create_repo,
+        handleChange
     }
 
 
@@ -283,9 +471,12 @@ export default defineComponent({
   margin-left: 10% !important;
   height: auto !important;
 }
-/* .top_menu{
+.menu{
+  width: 100% !important;
+}
+.top_menu{
   margin-left: 80% !important;
-} */
+}
 
 </style>
 <style lang='less'>
