@@ -17,7 +17,7 @@
           </a-menu-item>
           <a-menu-item key="projects">
             <template #icon>
-              <FolderOpenOutlined />
+              <project-outlined />
             </template>
             projects
           </a-menu-item>
@@ -32,6 +32,7 @@
       <div class="sidenav">
         <div class="sidebar">
           <div class="sidebar-tit">Tasks:</div>
+          <a-empty v-if="tasks.length==0" :image="simpleImage" />
           <a-radio-group class="sidebar-allbtn" v-model:value="selected">
             <a-radio-button
               v-for="(task,i) in tasks"
@@ -89,35 +90,6 @@
                 上传模型
               </a-button>
            </a-upload>
-          <!-- <a-list
-          class="demo-loadmore-list"
-          :loading="initLoading1"
-          item-layout="horizontal"
-          :data-source="model_list"
-        >
-          <template #loadMore>
-            <div
-              v-if="!initLoading1 && !loading"
-              :style="{ textAlign: 'center', marginTop: '12px', height: '32px', lineHeight: '32px' }"
-            >
-              <a-button @click="onLoadMore">loading more</a-button>
-            </div>
-          </template>
-
-          <template #renderItem="{ item }">
-            <a-list-item class="item">
-              <a-skeleton
-                avatar
-                :title="false"
-                :loading="!!item.loading"
-                active
-              >
-                <h4 @click="turn_to_repo_detial(item.owner_name,item.repo_name,item.update_time)">Model : {{item.model_name}}</h4> <h5>&nbsp;Version : {{item.model_version}}</h5>
-                <div>Creation Time : {{item.create_time}}</div>
-              </a-skeleton>
-            </a-list-item>
-          </template>
-        </a-list> -->
 
 
             <a-table :columns="columns" :data-source="model_list">
@@ -137,7 +109,7 @@
                  <template v-if="column.dataIndex === 'version'">
                     {{ record.model_version }}
                 </template>
-                 <template v-if="column.dataIndex === 'create_time'">
+                 <template v-if="column.dataIndex === 'create time'">
                     {{ record.model_name }}
                 </template>
                  <template v-if="column.dataIndex === 'operation'">
@@ -177,29 +149,34 @@
 
       </div>
       <div class="content" v-if="current[0]=='projects'">
-            <a-table :columns="columns" :data-source="model_list">
+            <a-table :columns="project_columns" :data-source="project_list">
               <template #headerCell="{ column }">
-                <template v-if="column.dataIndex === 'name'">
+                <template v-if="column.dataIndex === 'repository'">
                   <span>
                     <smile-outlined />
-                    Name
+                    Repository
                   </span>
                 </template>
               </template>
 
               <template #bodyCell="{ column, record }">
-                <template v-if="column.dataIndex === 'name'">
-                    {{ record.model_name }}
+                <template v-if="column.dataIndex === 'repository'">
+                    {{ record.repo_name }}
                 </template>
-                 <template v-if="column.dataIndex === 'version'">
-                    {{ record.model_version }}
+                 <template v-if="column.dataIndex === 'owner'">
+                    {{ record.repo_owner }}
                 </template>
-                 <template v-if="column.dataIndex === 'create_time'">
-                    {{ record.model_name }}
+                <template v-if="column.dataIndex === 'branch'">
+                    {{ record.branch_name }}
+                </template>
+                 <template v-if="column.dataIndex === 'modles'">
+                    <li v-for="(model,index) in record.model_names">
+                      {{record.model_names[index]}}{{record.model_version[index]}}
+                    </li>
                 </template>
                  <template v-if="column.dataIndex === 'operation'">
                      <a-popconfirm
-                        v-if="model_list.length"
+                        v-if="project_list.length"
                         title="Sure to delete?"
                         @confirm="onDelete(record.model_name,record.model_version)"
                       >
@@ -222,7 +199,8 @@ import { defineComponent, reactive, toRefs,ref } from "vue";
 import {onMounted } from 'vue';
 import axios  from "axios";
 import { useRouter } from "vue-router"
-import {CodeOutlined, FolderOpenOutlined ,UploadOutlined } from '@ant-design/icons-vue';
+import { Empty } from 'ant-design-vue';
+import {CodeOutlined, FolderOpenOutlined ,UploadOutlined,ProjectOutlined } from '@ant-design/icons-vue';
 // const host = 'http://localhost:8084/'
 const host = 'http://39.105.6.98:43081/'
 const query_all_task_url = host+'query_all_task'
@@ -233,7 +211,8 @@ export default defineComponent({
     // ApartmentOutlined
     CodeOutlined,
     FolderOpenOutlined,
-    UploadOutlined
+    UploadOutlined,
+    ProjectOutlined
     
   },
   setup() {
@@ -249,6 +228,7 @@ export default defineComponent({
     const selected = ref(null)
     const model_list = ref([])
     const fileList = ref([])
+    const project_list = ref([])
     const columns = [{
       title: 'name',
       dataIndex: 'name',
@@ -257,12 +237,30 @@ export default defineComponent({
       title: 'version',
       dataIndex: 'version',
     }, {
-      title: 'create_time',
-      dataIndex: 'create_time',
+      title: 'create time',
+      dataIndex: 'create time',
     }, {
       title: 'operation',
       dataIndex: 'operation',
     }];
+
+    const project_columns = [{
+      title: 'repository',
+      dataIndex: 'repository',
+    }, {
+      title: 'owner',
+      dataIndex: 'owner',
+    }, {
+      title: 'branch',
+      dataIndex: 'branch',
+    }, {
+      title: 'models',
+      dataIndex: 'models',
+    }, {
+      title: 'operation',
+      dataIndex: 'operation',
+    }];
+
 
     const handleChange = info => {
       let resFileList = [...info.fileList]; // 1. Limit the number of uploaded files
@@ -288,7 +286,7 @@ export default defineComponent({
       model_list.value = model_list.value.filter(item => !(item.model_name==model_name&&model_version==item.model_version))
     }
 
-    const create_repo = function(){
+    let create_repo = function(){
       let url =  '/api/v1/user/repos'
         axios.post('/api/v1/user/repos',{
           auto_init: true,
@@ -317,6 +315,18 @@ export default defineComponent({
         //   console.error(error);
         // })
     }
+
+    let get_all_project = function(){
+      let url = host+'query_all_project'
+      axios.get(url)
+      .then(response=>{
+        project_list.value = response.data.data
+      })
+      .catch(error=>{
+        console.error(error);
+      })
+    }
+
 
     let query_repo_by_task_id = function(taskid){
         let url =  host+'query_repo_by_task_id'
@@ -414,6 +424,8 @@ export default defineComponent({
         model_list,
         columns,
         fileList,
+        project_columns,
+        simpleImage: Empty.PRESENTED_IMAGE_SIMPLE,
       // 方法
         query_repo_by_task_id,
         turn_to_repo_detial,

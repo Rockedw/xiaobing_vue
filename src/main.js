@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-import { PageHeader ,DatePicker, Button, Menu, Avatar, Table, Spin, Row, Col, Radio, List,Descriptions ,Tabs ,Cascader ,Space ,Tree ,Modal ,Form,Input, Popconfirm,Upload } from 'ant-design-vue';
+import { PageHeader ,DatePicker, Button, Menu, Avatar, Table, Spin, Row, Col, Radio, List,Descriptions ,Tabs ,Cascader ,Space ,Tree ,Modal ,Form,Input, Popconfirm,Upload,Empty } from 'ant-design-vue';
 import App from './App.vue';
 import router from './router';
 import './assets/css/base.less';
@@ -29,6 +29,7 @@ app.use(DatePicker)
    .use(Table)
    .use(Popconfirm)
    .use(Upload)
+   .use(Empty)
 // app.use(Antd)
 
 app.use(router);
