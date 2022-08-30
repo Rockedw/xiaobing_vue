@@ -169,18 +169,18 @@
                 <template v-if="column.dataIndex === 'branch'">
                     {{ record.branch_name }}
                 </template>
-                 <template v-if="column.dataIndex === 'modles'">
-                    <li v-for="(model,index) in record.model_names">
-                      {{record.model_names[index]}}{{record.model_version[index]}}
-                    </li>
+                 <template v-if="column.dataIndex === 'models'">
+                    <span v-for="(model,index) in record.model_names">
+                      {{record.model_names[index]}}
+                      {{record.model_versions[index]}}
+                    </span>
                 </template>
                  <template v-if="column.dataIndex === 'operation'">
                      <a-popconfirm
                         v-if="project_list.length"
-                        title="Sure to delete?"
-                        @confirm="onDelete(record.model_name,record.model_version)"
-                      >
-                        <a>Delete</a>
+                        title="Sure to run?"
+                        @confirm="load_model(record.repo_name,record.repo_owner,record.update_time,record.branch_name,record.model_names,record.model_versions)">
+                        <a>Run</a>
                       </a-popconfirm>
                 </template>
        
@@ -201,8 +201,8 @@ import axios  from "axios";
 import { useRouter } from "vue-router"
 import { Empty } from 'ant-design-vue';
 import {CodeOutlined, FolderOpenOutlined ,UploadOutlined,ProjectOutlined } from '@ant-design/icons-vue';
-// const host = 'http://localhost:8084/'
-const host = 'http://39.105.6.98:43081/'
+const host = 'http://localhost:8084/'
+// const host = 'http://39.105.6.98:43081/'
 const query_all_task_url = host+'query_all_task'
 const temp = 'all'
 export default defineComponent({
@@ -283,7 +283,22 @@ export default defineComponent({
     //   dataSource.value = dataSource.value.filter(item => item.key !== key);
     // };
     const onDelete = function(model_name,model_version){
-      model_list.value = model_list.value.filter(item => !(item.model_name==model_name&&model_version==item.model_version))
+        model_list.value = model_list.value.filter(item => !(item.model_name==model_name&&model_version==item.model_version))
+    }
+    const load_model = function(repo_name,repo_owner,update_time,branch_name,model_names,model_versions){
+      let url = host+'load_model'
+      axios.post(url,{
+        repo_name:repo_name,
+        repo_owner:repo_owner,
+        update_time:update_time,
+        branch_name:branch_name,
+        model_names:model_names,
+        model_versions:model_versions
+      }).then(response=>{
+
+      }).catch(error=>{
+        console.error(error);
+      })
     }
 
     let create_repo = function(){
@@ -316,11 +331,12 @@ export default defineComponent({
         // })
     }
 
-    let get_all_project = function(){
+    const get_all_project = function(){
       let url = host+'query_all_project'
       axios.get(url)
       .then(response=>{
         project_list.value = response.data.data
+        console.log('project_list',project_list.value)
       })
       .catch(error=>{
         console.error(error);
@@ -398,6 +414,7 @@ export default defineComponent({
 
 
     onMounted(() => {
+        get_all_project()
         axios.get(query_all_task_url)
         .then(response=>{
             console.log(response.data.data)
@@ -409,6 +426,7 @@ export default defineComponent({
         })
         query_all_repo()
         query_all_model()
+
     });
   
     return {
@@ -426,13 +444,16 @@ export default defineComponent({
         fileList,
         project_columns,
         simpleImage: Empty.PRESENTED_IMAGE_SIMPLE,
+        project_list,
       // 方法
         query_repo_by_task_id,
         turn_to_repo_detial,
         query_all_model,
         onDelete,
+        load_model,
         create_repo,
-        handleChange
+        handleChange,
+        get_all_project
     }
 
 

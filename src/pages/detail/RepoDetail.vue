@@ -135,8 +135,8 @@ import {DownOutlined , BranchesOutlined ,MinusCircleOutlined, PlusOutlined } fro
 import { defineComponent, onMounted, ref, nextTick,reactive } from 'vue';
 import {useRouter} from 'vue-router'
 import axios  from "axios"
-// const host = 'http://localhost:8084/'
-const host = 'http://39.105.6.98:43081/'
+const host = 'http://localhost:8084/'
+// const host = 'http://39.105.6.98:43081/'
 
 
 
