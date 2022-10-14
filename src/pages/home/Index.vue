@@ -523,7 +523,8 @@ import {
 
 // const host = 'http://localhost:8081/'
 // const host = 'http://39.105.6.98:43081/'
-const host  = 'http://8.130.105.10:59081/'
+// const host  = 'http://8.130.105.10:59081/'
+const host = 'http://localhost:8081'
 const query_all_task_url = host + 'query_all_task'
 export default defineComponent({
   components: {
