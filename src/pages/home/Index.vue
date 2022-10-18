@@ -15,17 +15,17 @@
             </template>
             Models
           </a-menu-item>
-          <a-menu-item key="projects">
-            <template #icon>
-              <project-outlined/>
-            </template>
-            Projects
-          </a-menu-item>
           <a-menu-item key="modules">
             <template #icon>
               <project-outlined/>
             </template>
             Modules
+          </a-menu-item>
+          <a-menu-item key="projects">
+            <template #icon>
+              <project-outlined/>
+            </template>
+            Projects
           </a-menu-item>
         </a-menu>
       </div>
@@ -208,6 +208,126 @@
         </a-table>
 
       </div>
+      <div class="content" v-if="current[0]==='modules'">
+      <a-table :columns="module_columns" :data-source="module_list">
+        <template #headerCell="{ column }">
+          <template v-if="column.dataIndex === 'repository'">
+                    <span>
+                      <smile-outlined/>
+                      Repository
+                    </span>
+          </template>
+        </template>
+
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'repository'">
+            {{ record.repo_name }}
+          </template>
+          <template v-if="column.dataIndex === 'owner'">
+            {{ record.owner_name }}
+          </template>
+          <template v-if="column.dataIndex === 'branch'">
+            {{ record.branch_name }}
+          </template>
+          <template v-if="column.dataIndex === 'model'">
+            {{ record.model_name }}
+          </template>
+          <template v-if="column.dataIndex === 'model version'">
+            {{ record.model_version }}
+          </template>
+          <template v-if="column.dataIndex === 'update_time'">
+            {{ record.model_update_time }}
+          </template>
+
+          <template v-if="column.dataIndex === 'operation'">
+            <!--                     <a-popconfirm-->
+            <!--                        v-if="project_list.length"-->
+            <!--                        title="Sure to run?"-->
+            <!--                        @confirm="load_model(record.repo_name,record.repo_owner,record.update_time,record.branch_name,record.model_names,record.model_versions)">-->
+            <!--                        <a>Run</a>-->
+            <!--                      </a-popconfirm>-->
+            <a-switch v-model:checked="module_checked_list[record.index]"/>
+            <a-popconfirm
+                v-if="module_list.length"
+                title="Sure to delete?"
+                @confirm="delete_module_by_id(record.id)"
+            >
+              <a style="margin-left: 3%">Delete</a>
+            </a-popconfirm>
+          </template>
+
+        </template>
+      </a-table>
+      <a-modal
+              v-model:visible="modal_visible"
+              title="Basic Modal"
+              width="100%"
+              wrap-class-name="full-modal"
+              @ok="handleOk"
+              destroy-on-close
+              @cancel="modal_after_close()"
+          >
+        <a-row type="flex" :gutter="[16,16]">
+          <a-col  flex="auto"  v-for="(module,i) in running_module_list ">
+            <div>
+              <h3>{{ module['model_name'] }}</h3>
+              <a-spin v-if="service_url_list[i]===null||service_url_list[i] ===''" tip="模型加载中...">
+                <a-alert
+                    message="Alert message title"
+                    description="Further details about the context of this alert."
+                ></a-alert>
+              </a-spin>
+              <div class="service_result_div" v-else-if="service_url_list[i]==='error'">
+                    <a>发生错误</a>
+              </div>
+              <div class="service_result_div" v-else >
+                <h3>{{ service_url_list[i] }}</h3>
+                <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
+                <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
+                            placeholder="result" :rows="7"/>
+                <a-button style="margin-top: 1% !important;"
+                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
+                </a-button>
+                <a-divider dashed/>
+              </div>
+            </div>
+          </a-col>
+        </a-row>
+        <a-button style="margin-top: 1% !important;"
+                        @click="request_all_service(post_data)">统一提交
+              </a-button>
+
+          </a-modal>
+      <div>
+
+        <a-modal v-model:visible="create_module_modal_visible" width="60%" title="Basic Modal" @ok="submit_create_module_form"
+                   @cancel="clear_form">
+            <a-form
+                :model="create_module_form"
+                name="validate_other"
+                v-bind="formItemLayout"
+            >
+              <a-form-item
+                  name="hdfs_path"
+                  label="HDFS path"
+                  has-feedback
+              >
+                <a-input v-model:value="create_module_form.config_hdfs_path">
+                </a-input>
+              </a-form-item>
+            </a-form>
+          </a-modal>
+
+      <a-button style="margin-right: 2px !important;" @click="make_create_module_modal_visible">Create</a-button>
+       <a-popconfirm
+              style="margin: auto !important;"
+              v-if="module_list.length"
+              title="Sure to run?"
+              @confirm="run_module()">
+            <a-button>Run</a-button>
+          </a-popconfirm>
+      </div>
+    </div>
       <div class="content" v-if="current[0]==='projects'">
         <a-table :columns="project_columns" :data-source="project_list">
           <template #headerCell="{ column }">
@@ -238,25 +358,31 @@
               <!--                        @confirm="load_model(record.repo_name,record.repo_owner,record.update_time,record.branch_name,record.model_names,record.model_versions)">-->
               <!--                        <a>Run</a>-->
               <!--                      </a-popconfirm>-->
-              <a-switch v-model:checked="project_checked_list[record.index]"/>
               <a-popconfirm
-                  v-if="model_list.length"
+                  v-if="project_list.length"
+                  title="Sure to run?"
+                  @confirm="run_project(record.project_id)">
+
+                  <a >Run</a>
+              </a-popconfirm>
+              <a-popconfirm
+                  v-if="project_list.length"
                   title="Sure to delete?"
                   @confirm="delete_project(record.project_id,record.index)"
               >
-                <a style="margin-left: 3%">Delete</a>
+                <a style="margin-left: 5%">Delete</a>
               </a-popconfirm>
             </template>
 
           </template>
         </a-table>
         <div>
-          <a-popconfirm
-              v-if="project_list.length"
-              title="Sure to run?"
-              @confirm="run_projects()">
-            <a-button>Run</a-button>
-          </a-popconfirm>
+<!--          <a-popconfirm-->
+<!--              v-if="project_list.length"-->
+<!--              title="Sure to run?"-->
+<!--              @confirm="run_project()">-->
+<!--            <a-button>Run</a-button>-->
+<!--          </a-popconfirm>-->
           <a-button @click="make_create_project_modal_visible">Create</a-button>
 
           <a-modal v-model:visible="create_project_modal_visible" width="60%" title="Basic Modal" @ok="submit_form"
@@ -349,159 +475,41 @@
               destroy-on-close
               @cancel="modal_after_close()"
           >
-            <div v-for="(project,i) in running_project_list ">
-              <h3>{{ project['model_name'] }}</h3>
-              <a-spin v-if="service_url_list===[] || service_url_list[i] ===''" tip="模型加载中...">
-                <a-alert
-                    message="Alert message title"
-                    description="Further details about the context of this alert."
-                ></a-alert>
-              </a-spin>
-              <div  class="service_result_div" v-else-if="service_url_list[i]==='error'">
-                //文本框展示错误信息
-                <a-textarea
-                    v-if="service_url_list[i] ==='error'"
-                    :rows="4">
-                    发生错误
-                    </a-textarea>
-              </div>
-              <div  class="service_result_div" v-else>
-                <h3>{{ service_url_list[i] }}</h3>
-                <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
-                <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
-                            placeholder="result" :rows="7"/>
-                <a-button style="margin-top: 1% !important;"
-                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
-                </a-button>
-                <a-divider dashed/>
-              </div>
-            </div>
+            <a-row type="flex" :gutter="[16,16]">
+              <a-col  flex="auto"  v-for="(module,i) in running_module_list ">
+                <div>
+                  <h3>{{ module['model_name'] }}</h3>
+                  <a-spin v-if="service_url_list[i]===null||service_url_list[i] ===''" tip="模型加载中...">
+                    <a-alert
+                        message="Alert message title"
+                        description="Further details about the context of this alert."
+                    ></a-alert>
+                  </a-spin>
+                  <div class="service_result_div" v-else-if="service_url_list[i]==='error'">
+                        <a>发生错误</a>
+                  </div>
+                  <div class="service_result_div" v-else >
+                    <h3>{{ service_url_list[i] }}</h3>
+                    <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
+                    <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
+                                placeholder="result" :rows="7"/>
+                    <a-button style="margin-top: 1% !important;"
+                              @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
+                    </a-button>
+                    <a-divider dashed/>
+                  </div>
+                </div>
+              </a-col>
+
+            </a-row>
+            <a-button style="margin-top: 1% !important;"
+                        @click="request_all_service(post_data)">统一提交
+              </a-button>
           </a-modal>
 
         </div>
 
       </div>
-
-
-    <div class="content" v-if="current[0]==='modules'">
-      <a-table :columns="module_columns" :data-source="module_list">
-        <template #headerCell="{ column }">
-          <template v-if="column.dataIndex === 'repository'">
-                    <span>
-                      <smile-outlined/>
-                      Repository
-                    </span>
-          </template>
-        </template>
-
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.dataIndex === 'repository'">
-            {{ record.repo_name }}
-          </template>
-          <template v-if="column.dataIndex === 'owner'">
-            {{ record.owner_name }}
-          </template>
-          <template v-if="column.dataIndex === 'branch'">
-            {{ record.branch_name }}
-          </template>
-          <template v-if="column.dataIndex === 'model'">
-            {{ record.model_name }}
-          </template>
-          <template v-if="column.dataIndex === 'model version'">
-            {{ record.model_version }}
-          </template>
-          <template v-if="column.dataIndex === 'update_time'">
-            {{ record.model_update_time }}
-          </template>
-
-          <template v-if="column.dataIndex === 'operation'">
-            <!--                     <a-popconfirm-->
-            <!--                        v-if="project_list.length"-->
-            <!--                        title="Sure to run?"-->
-            <!--                        @confirm="load_model(record.repo_name,record.repo_owner,record.update_time,record.branch_name,record.model_names,record.model_versions)">-->
-            <!--                        <a>Run</a>-->
-            <!--                      </a-popconfirm>-->
-            <a-switch v-model:checked="module_checked_list[record.index]"/>
-            <a-popconfirm
-                v-if="module_list.length"
-                title="Sure to delete?"
-                @confirm="delete_module_by_id(record.id)"
-            >
-              <a style="margin-left: 3%">Delete</a>
-            </a-popconfirm>
-          </template>
-
-        </template>
-      </a-table>
-
-      <a-modal
-              v-model:visible="modal_visible"
-              title="Basic Modal"
-              width="100%"
-              wrap-class-name="full-modal"
-              @ok="handleOk"
-              destroy-on-close
-              @cancel="modal_after_close()"
-          >
-        <a-row type="flex" :gutter="[16,16]">
-          <a-col  flex="auto"  v-for="(module,i) in running_module_list ">
-            <div>
-              <h3>{{ module['model_name'] }}</h3>
-              <a-spin v-if="service_url_list[i]===null||service_url_list[i] ===''" tip="模型加载中...">
-                <a-alert
-                    message="Alert message title"
-                    description="Further details about the context of this alert."
-                ></a-alert>
-              </a-spin>
-              <div class="service_result_div" v-else-if="service_url_list[i]==='error'">
-                    <a>发生错误</a>
-              </div>
-              <div class="service_result_div" v-else >
-                <h3>{{ service_url_list[i] }}</h3>
-                <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
-                <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
-                            placeholder="result" :rows="7"/>
-                <a-button style="margin-top: 1% !important;"
-                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
-                </a-button>
-                <a-divider dashed/>
-              </div>
-            </div>
-          </a-col>
-        </a-row>
-
-          </a-modal>
-      <div>
-
-
-         <a-modal v-model:visible="create_module_modal_visible" width="60%" title="Basic Modal" @ok="submit_create_module_form"
-                   @cancel="clear_form">
-            <a-form
-                :model="create_module_form"
-                name="validate_other"
-                v-bind="formItemLayout"
-            >
-              <a-form-item
-                  name="hdfs_path"
-                  label="HDFS path"
-                  has-feedback
-              >
-                <a-input v-model:value="create_module_form.config_hdfs_path">
-                </a-input>
-              </a-form-item>
-            </a-form>
-          </a-modal>
-
-      <a-button style="margin-right: 2px !important;" @click="make_create_module_modal_visible">Create</a-button>
-       <a-popconfirm
-              style="margin: auto !important;"
-              v-if="module_list.length"
-              title="Sure to run?"
-              @confirm="run_module()">
-            <a-button>Run</a-button>
-          </a-popconfirm>
-      </div>
-    </div>
   </div>
   </div>
 </template>
@@ -523,8 +531,8 @@ import {
 
 // const host = 'http://localhost:8081/'
 // const host = 'http://39.105.6.98:43081/'
-// const host  = 'http://8.130.105.10:59081/'
-const host = 'http://localhost:8081'
+const host  = 'http://8.130.105.10:59081/'
+// const host = 'http://localhost:8081'
 const query_all_task_url = host + 'query_all_task'
 export default defineComponent({
   components: {
@@ -662,7 +670,13 @@ export default defineComponent({
         owner_name: owner_name
       })
           .then(response => {
-            form_data.repo_names = response.data.data
+            if(response.code === 200) {
+              form_data.repo_names = response.data.data
+            }
+            else{
+              alert(response.data.msg)
+              console.log('query_repo_by_owner error')
+            }
           })
           .catch(error => {
             console.error(error);
@@ -677,10 +691,17 @@ export default defineComponent({
         repo_name: repo_name
       })
           .then(response => {
-            let temp = response.data.data['branches']
-            for (let i = 1; i < temp.length; i++) {
-              form_data.branches.push(temp[i])
+            if(response.code === 200) {
+              let temp = response.data.data['branches']
+              for (let i = 1; i < temp.length; i++) {
+                form_data.branches.push(temp[i])
+              }
             }
+            else{
+              alert(response.data.msg)
+              console.log('query_branches_by_owner_and_name error')
+            }
+
           })
           .catch(error => {
             console.error(error);
@@ -714,7 +735,14 @@ export default defineComponent({
         model_version: model_version
       })
           .then(response => {
-            model_list.value = model_list.value.filter(item => !(item.model_name === model_name && model_version === item.model_version))
+            if(response.code === 200) {
+              model_list.value = model_list.value.filter(item => !(item.model_name === model_name && model_version === item.model_version))
+            }
+            else{
+              alert(response.data.msg)
+              console.log('delete_model error')
+            }
+
           })
           .catch(error => {
             console.error(error);
@@ -741,30 +769,53 @@ export default defineComponent({
           // console.log('project.repo_name ',project['repo_name'])
         }
       }
+
     }
 
-    const run_projects = function () {
-      let index = 0
-      let projects = project_list.value
-      for (let i = 0; i < project_checked_list.value.length; i++) {
-        if (project_checked_list.value[i] === true) {
-          let project = projects[i]
-          running_project_list.value.push(project)
-          service_url_list.value.push('')
-          response_data_list.value.push('')
-          load_model(index, project['repo_name'], project['repo_owner'], project['update_time'], project['branch_name'], project['model_names'], project['model_versions'])
-          index += 1
-          console.log('project', project)
-          // console.log('project.repo_name ',project['repo_name'])
-        }
-      }
+    const run_project = function (project_id) {
+        modal_visible.value=true
+        let url = host + 'query_module_by_project_id'
+        axios.post(url, {
+          project_id: project_id
+        })
+            .then(response => {
+              if(response.data.code === 200) {
+                let modules = response.data.data
+                let service_index = 0
+                for (let i = 0; i < modules.length; i++) {
+                  let module = modules[i]
+                  running_module_list.value.push(module)
+                  service_url_list.value.push('')
+                  response_data_list.value.push('')
+                  load_module_model(i,service_index)
+                  console.log('module', module)
+                  service_index++
+                  // console.log('project.repo_name ',project['repo_name'])
+                }
+              }
+              else{
+                alert(response.data.msg)
+                console.log('get_module_by_project_id error')
+              }
+
+            })
+            .catch(error => {
+              console.error(error);
+            })
+      console.log('herehereherehereherehereherehereherehere',running_module_list.value)
     }
 
     const get_all_models = function () {
       let url = host + 'query_all_model'
       axios.get(url)
           .then(response => {
-            model_list.value = response.data.data
+            if(response.data.code === 200) {
+              model_list.value = response.data.data
+            }
+            else{
+              alert(response.data.msg)
+              console.log('query_all_model error')
+            }
             // for (let key in models) {
             //   console.log('key', key)
             //   console.log('models[key]', models[key])
@@ -810,7 +861,7 @@ export default defineComponent({
       axios.post(url, {
           module_id : module_list.value[index]['id'],
       }).then(response => {
-        if (response.data.msg === 'success') {
+        if (response.data.code === 200) {
           console.log('service url is ', response.data.data)
           service_url_list.value[service_index] = response.data.data
           console.log('service_url_list', service_url_list.value)
@@ -818,6 +869,7 @@ export default defineComponent({
         else{
           alert(response.data.data)
           service_url_list.value[service_index] = 'error'
+          console.log('run_module error', response)
         }
       }).catch(error => {
         console.error(error);
@@ -836,7 +888,15 @@ export default defineComponent({
         model_versions: model_versions
       }).then(response => {
         console.log('herehrehskdhajkd', response.data.data)
-        service_url_list.value[index] = response.data.data
+        if (response.code === 200) {
+          console.log('service url is ', response.data.data)
+          service_url_list.value[index] = response.data.data
+          console.log('service_url_list', service_url_list.value)
+        }
+        else{
+          alert(response.data.data)
+          service_url_list.value[index] = 'error'
+        }
       }).catch(error => {
         console.error(error);
       })
@@ -876,17 +936,54 @@ export default defineComponent({
       let url = host + 'query_all_project'
       axios.get(url)
           .then(response => {
-            project_checked_list.value = []
-            project_list.value = response.data.data
-            for (let i = 0; i < project_list.value.length; i++) {
-              project_checked_list.value.push(false)
+            if(response.data.code === 200) {
+              project_checked_list.value = []
+              project_list.value = response.data.data
+              for (let i = 0; i < project_list.value.length; i++) {
+                project_checked_list.value.push(false)
+              }
+              console.log('project_list', project_list.value)
+              console.log('project_checked_list', project_checked_list.value)
             }
-            console.log('project_list', project_list.value)
-            console.log('project_checked_list', project_checked_list.value)
+            else{
+              alert(response.data.msg)
+              console.log('query_all_project error',response)
+            }
+
           })
           .catch(error => {
             console.error(error);
           })
+    }
+
+    const request_all_service = function (postdata) {
+      console.log('request_all_service')
+        let url = host + 'request_service'
+        for(let i = 0 ; i<service_url_list.value.length; i++){
+            axios.post(url,{
+                service_url: 'http://'+service_url_list.value[i],
+                data: postdata
+            })
+                .then(response => {
+                    if(response.data.code === 200) {
+                    console.log('request_service response', response.data.data)
+                    let response_data = JSON.parse(response.data.data.replace(/'/g, '"'))
+                    let temp = ''
+                    for (let key in response_data) {
+                      let value = response_data[key]
+                      temp = temp + key + ' : ' + value + ' \n'
+                    }
+                    response_data_list.value[i] = temp
+                    }
+                    else{
+                      alert(response.data.msg)
+                      console.log('request_service error')
+                    }
+                })
+                .catch(error => {
+                  console.error(error);
+                })
+        }
     }
 
     const request_service = function (index, service_url, data) {
@@ -898,6 +995,7 @@ export default defineComponent({
         data: data
       })
           .then(response => {
+            if(response.data.code === 200) {
             console.log('request_service response', response.data.data)
             let response_data = JSON.parse(response.data.data.replace(/'/g, '"'))
             let temp = ''
@@ -906,6 +1004,12 @@ export default defineComponent({
               temp = temp + key + ' : ' + value + ' \n'
             }
             response_data_list.value[index] = temp
+            }
+            else{
+              alert(response.data.msg)
+              console.log('request_service error')
+            }
+
           })
           .catch(error => {
             console.error(error);
@@ -926,9 +1030,15 @@ export default defineComponent({
         task_id: taskid
       })
           .then(response => {
-            console.log(response.data)
-            data.value = response.data.data;
-            repo_list.value = response.data.data;
+            if(response.code === 200) {
+              console.log(response.data)
+              data.value = response.data.data;
+              repo_list.value = response.data.data;
+            }
+            else{
+              alert(response.data.msg)
+              console.log('query_repo_by_task_id error')
+            }
           })
           .catch(error => {
             console.error();
@@ -949,10 +1059,16 @@ export default defineComponent({
     let query_all_repo = function () {
       let query_all_repo_url = host + 'query_all_repo'
       fetch(query_all_repo_url).then(res => res.json()).then(res => {
-        initLoading.value = false;
-        data.value = res.data;
-        repo_list.value = res.data;
-        console.log(repo_list.value)
+        if(res.code===200) {
+          initLoading.value = false;
+          data.value = res.data;
+          repo_list.value = res.data;
+          console.log(repo_list.value)
+        }
+        else{
+          alert(res.data.msg)
+          console.log('query_all_repo error',res)
+        }
       });
     }
 
@@ -1016,8 +1132,14 @@ export default defineComponent({
     const query_all_owner = function () {
       let query_all_owner_url = host + 'query_all_owner'
       fetch(query_all_owner_url).then(res => res.json()).then(res => {
-        form_data.owner_names = res.data
-        console.log('form_data.owner_names', form_data.owner_names)
+        if(res.code===200) {
+          form_data.owner_names = res.data
+          console.log('form_data.owner_names', form_data.owner_names)
+        }
+        else{
+          alert(res.data.msg)
+          console.log('query_all_owner error')
+        }
       });
     }
     const formItemLayout = {
@@ -1085,11 +1207,16 @@ export default defineComponent({
         project_hdfs_path: create_project_form.project_hdfs_path
       })
           .then(response => {
-            console.log(response.data.data)
-            create_project_modal_visible.value = false
-            clear_form()
-            if (response.data.data === 'success') {
-              get_all_project()
+            if(response.code===200) {
+              console.log(response.data.data)
+              create_project_modal_visible.value = false
+              clear_form()
+              if (response.code === 200) {
+                get_all_project()
+              }
+            }
+            else{
+              alert(response.data.msg)
             }
 
           })
@@ -1105,10 +1232,11 @@ export default defineComponent({
         config_hdfs_path: create_module_form.config_hdfs_path,
       })
           .then(response => {
+
             console.log(response.data.data)
             create_module_modal_visible.value = false
             clear_form()
-            if (response.data.msg === 'success') {
+            if (response.code === 200) {
               alert(response.data.data)
               get_all_module()
             }
@@ -1127,9 +1255,10 @@ export default defineComponent({
       })
           .then(response => {
             console.log(response.data.data)
-            if (response.data.data === 'success') {
+            if (response.code === 200) {
               project_list.value.splice(index, 1)
               project_checked_list.value.splice(index, 1)
+              get_all_project()
             }
           })
           .catch(error => {
@@ -1234,7 +1363,7 @@ export default defineComponent({
       })
           .then(response => {
             console.log(response.data.data)
-            if (response.data.msg === 'success') {
+            if (response.code === 200) {
               get_all_module()
               var index = module_list.value.findIndex(item => item.module_id === module_id)
               module_list.value.splice(index, 1)
@@ -1309,7 +1438,6 @@ export default defineComponent({
       get_all_project,
       request_service,
       modal_after_close,
-      run_projects,
       make_create_project_modal_visible,
       query_all_owner,
       processing_list_to_selection_data,
@@ -1331,7 +1459,9 @@ export default defineComponent({
       load_module_model,
       run_module,
       submit_create_module_form,
-      delete_module_by_id
+      delete_module_by_id,
+      run_project,
+      request_all_service
 
 
     }
