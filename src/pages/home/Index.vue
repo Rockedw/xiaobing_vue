@@ -267,6 +267,15 @@
               destroy-on-close
               @cancel="modal_after_close()"
           >
+          <h1>Input</h1>
+          <a-divider />
+          <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
+          <a-button v-if="service_url_list.length>0" style="margin-top: 1% !important;"
+                        @click="request_all_service(post_data)">统一提交
+          </a-button>
+        <a-divider />
+        <h1>Output</h1>
+          <a-divider />
         <a-row type="flex" :gutter="[16,16]">
           <a-col  flex="auto"  v-for="(module,i) in running_module_list ">
             <div>
@@ -282,20 +291,16 @@
               </div>
               <div class="service_result_div" v-else >
                 <h3>{{ service_url_list[i] }}</h3>
-                <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
                 <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
                             placeholder="result" :rows="7"/>
-                <a-button style="margin-top: 1% !important;"
-                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
-                </a-button>
+<!--                <a-button style="margin-top: 1% !important;"-->
+<!--                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交-->
+<!--                </a-button>-->
                 <a-divider dashed/>
               </div>
             </div>
           </a-col>
         </a-row>
-        <a-button style="margin-top: 1% !important;"
-                        @click="request_all_service(post_data)">统一提交
-              </a-button>
 
           </a-modal>
       <div>
@@ -475,6 +480,14 @@
               destroy-on-close
               @cancel="modal_after_close()"
           >
+            <h1>Input</h1>
+          <a-divider />
+          <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
+            <a-button v-if="service_url_list.length>0" style="margin-top: 1% !important;"
+                        @click="request_all_service(post_data)">统一提交
+              </a-button>
+          <a-divider />
+          <h1>Output</h1>
             <a-row type="flex" :gutter="[16,16]">
               <a-col  flex="auto"  v-for="(module,i) in running_module_list ">
                 <div>
@@ -490,21 +503,19 @@
                   </div>
                   <div class="service_result_div" v-else >
                     <h3>{{ service_url_list[i] }}</h3>
-                    <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>
+<!--                    <a-textarea v-model:value="post_data" placeholder="input" :rows="4"/>-->
                     <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
                                 placeholder="result" :rows="7"/>
-                    <a-button style="margin-top: 1% !important;"
-                              @click="request_service(i,'http://'+service_url_list[i],post_data)">提交
-                    </a-button>
+<!--                    <a-button style="margin-top: 1% !important;"-->
+<!--                              @click="request_service(i,'http://'+service_url_list[i],post_data)">提交-->
+<!--                    </a-button>-->
                     <a-divider dashed/>
                   </div>
                 </div>
               </a-col>
 
             </a-row>
-            <a-button style="margin-top: 1% !important;"
-                        @click="request_all_service(post_data)">统一提交
-              </a-button>
+
           </a-modal>
 
         </div>
