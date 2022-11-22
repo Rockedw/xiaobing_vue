@@ -292,7 +292,7 @@
               <div class="service_result_div" v-else >
                 <h3>{{ service_url_list[i] }}</h3>
                 <a-textarea v-model:value="response_data_list[i]" style="margin-top: 1% !important;"
-                            placeholder="result" :rows="7"/>
+                            placeholder="result" :rows="28"/>
 <!--                <a-button style="margin-top: 1% !important;"-->
 <!--                          @click="request_service(i,'http://'+service_url_list[i],post_data)">提交-->
 <!--                </a-button>-->
@@ -979,12 +979,16 @@ export default defineComponent({
                     if(response.data.code === 200) {
                     console.log('request_service response', response.data.data)
                     let response_data = JSON.parse(response.data.data.replace(/'/g, '"'))
-                    let temp = ''
-                    for (let key in response_data) {
-                      let value = response_data[key]
-                      temp = temp + key + ' : ' + value + ' \n'
-                    }
-                    response_data_list.value[i] = temp
+                      // 将response_data以字符串形式显示
+                      let response_data_str = JSON.stringify(response_data, null, 4)
+                      console.log('response_data_str', response_data_str)
+                      response_data_list.value[i] = response_data_str
+                    // let temp = ''
+                    // for (let key in response_data) {
+                    //   let value = response_data[key]
+                    //   temp = temp + key + ' : ' + value + ' \n'
+                    // }
+                    // response_data_list.value[i] = temp
                     }
                     else{
                       alert(response.data.msg)
